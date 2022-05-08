@@ -21,7 +21,7 @@ ggplot(map) +
   theme_map() +
   scale_fill_continuous_tableau() +
   labs(title = "Total Orders by State",
-       subtitle = "California has the most orders",
+       subtitle = "California, New York, and Texas have the most orders",
        fill = "Total Orders") +
   theme(legend.position = "bottom",
         plot.title = element_text(size=16))
