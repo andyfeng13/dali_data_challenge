@@ -32,15 +32,10 @@ ggsave("figures/orders_by_state.pdf", width = 8, height = 6)
 # Orders over time --------------------------------------------------------
 df1 <- df %>% 
   mutate(month = month(`Order Date`), year = year(`Order Date`)) %>% 
-  group_by(year, month) %>% count()
+  group_by(year, month) %>% 
+  summarise(n = n(), sales = sum(Sales), profit = sum(Profit))
 
-df2 <- df %>% 
-  mutate(month = month(`Order Date`), year = year(`Order Date`)) %>% 
-  group_by(year, month) %>% summarise(sales = sum(Sales), profit = sum(Profit))
-
-df3 <- inner_join(df1, df2, by = c("year", "month"))
-
-ggplot(df3) +
+ggplot(df1) +
   geom_col(aes(month, n, fill = sales)) +
   scale_x_continuous(breaks = seq(1, 12, 1)) +
   facet_wrap(~year) +
@@ -101,7 +96,9 @@ ggplot(df1, aes(x="", y=pct, fill=`Ship Mode`)) +
             position = position_stack(vjust = 0.5), size=5) +
   theme_void() +
   scale_fill_brewer()+
-  labs(title = "Most Popular Shipping Modes", fill = "Ship Mode")
+  labs(title = "Most Popular Shipping Modes",
+       subtitle = "Standard shipping is the overwhelming majority",
+       fill = "Ship Mode")
 
 ggsave("figures/ship_modes.pdf", width = 8, height = 6)
 
@@ -110,7 +107,7 @@ ggsave("figures/ship_modes.pdf", width = 8, height = 6)
 df1 <- df %>% 
   mutate(letters = str_extract(City, "."),
          start = ifelse(letters=="P", 1, 0))
-model <- lm(Profit ~ letters, df1)
+model <- lm(Profit ~ start, df1)
 summary(model)
 
 df2 <- df1 %>% 
@@ -120,13 +117,45 @@ df2 <- df1 %>%
 ggplot(df2) +
   geom_col(aes(reorder(letters, profit), profit, fill = start)) +
   coord_flip() + 
-  theme_bw() +
+  theme_light() +
   labs(title = "Profits vs City Start Letter",
        y = "Total Profits", x = NULL,
        subtitle = "Cities that start with 'p' have greater profit losses") +
   theme(legend.position = "none")
 
 ggsave("figures/profits_by_letter.pdf", width = 8, height = 6)
+
+
+# Discounts by category ---------------------------------------------------
+model <- lm(Profit ~ Discount, df)
+summary(model)
+
+df1 <- df %>% 
+  group_by(`Sub-Category`) %>% 
+  summarise(mean = mean(Discount) * 100,
+            sales = sum(Sales)/1000, profit = sum(Profit)/1000)
+
+ggplot(df1) +
+  geom_point(aes(sales, profit, color = `Sub-Category`, size = mean)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#e00006", size = .8) +
+  annotate("text", x = 315, y = -3, label = "Zero-profits") +
+  ggrepel::geom_label_repel(aes(sales, profit, label = `Sub-Category`),
+                            hjust = 1, vjust = .5, size = 3) +
+  theme_light() +
+  scale_y_continuous(limits = c(-20, 60), breaks = seq(-20, 60, 20),
+                     labels = c("Profit loss", "0", "20", "40", "Profit gain")) +
+  scale_size_continuous(range = c(1, 8)) +
+  guides(color = "none") +
+  labs(title = "Sales and Profits by Category",
+       subtitle = "Larger circles indicate greater discounts on average",
+       x = "Total Sales (in thousands)", y = "Total Profits (in thousands)",
+       size = "Average \nDiscount (%)")
+
+ggsave("figures/profits_by_category.pdf", width = 8, height = 6)
+
+
+
+
 
 
 
